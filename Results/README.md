@@ -1,1 +1,2 @@
-Results of Tests and Experiments
+This folder contains output results of all experiments.
+Speed test and fragmentation test results.
