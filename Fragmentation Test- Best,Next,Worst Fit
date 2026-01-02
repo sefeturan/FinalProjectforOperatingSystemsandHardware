@@ -1,0 +1,162 @@
+#include <stdio.h>
+#include <stdlib.h>
+
+typedef struct Block {
+    int start;
+    int size;
+    struct Block* next;
+} Block;
+
+Block* freeList;
+Block* lastPos; // for next fit
+
+void initMemory() {
+    freeList = (Block*)malloc(sizeof(Block));
+    freeList->start = 0;
+    freeList->size = 100;
+    freeList->next = NULL;
+    lastPos = freeList;
+}
+
+void printFreeList() {
+    Block* temp = freeList;
+    while (temp != NULL) {
+        printf("[start=%d size=%d] ", temp->start, temp->size);
+        temp = temp->next;
+    }
+    printf("\n");
+}
+
+int allocateBestFit(int size) {
+    Block *curr = freeList, *best = NULL, *prev = NULL, *bestPrev = NULL;
+
+    while (curr != NULL) {
+        if (curr->size >= size) {
+            if (best == NULL || curr->size < best->size) {
+                best = curr;
+                bestPrev = prev;
+            }
+        }
+        prev = curr;
+        curr = curr->next;
+    }
+
+    if (best == NULL) return -1;
+
+    int start = best->start;
+    best->start += size;
+    best->size -= size;
+
+    if (best->size == 0) {
+        if (bestPrev == NULL)
+            freeList = best->next;
+        else
+            bestPrev->next = best->next;
+        free(best);
+    }
+
+    return start;
+}
+
+int allocateWorstFit(int size) {
+    Block *curr = freeList, *worst = NULL, *prev = NULL, *worstPrev = NULL;
+
+    while (curr != NULL) {
+        if (curr->size >= size) {
+            if (worst == NULL || curr->size > worst->size) {
+                worst = curr;
+                worstPrev = prev;
+            }
+        }
+        prev = curr;
+        curr = curr->next;
+    }
+
+    if (worst == NULL) return -1;
+
+    int start = worst->start;
+    worst->start += size;
+    worst->size -= size;
+
+    if (worst->size == 0) {
+        if (worstPrev == NULL)
+            freeList = worst->next;
+        else
+            worstPrev->next = worst->next;
+        free(worst);
+    }
+
+    return start;
+}
+
+int allocateNextFit(int size) {
+    Block* curr = lastPos;
+    Block* prev = NULL;
+
+    while (curr != NULL) {
+        if (curr->size >= size) {
+            int start = curr->start;
+            curr->start += size;
+            curr->size -= size;
+            lastPos = curr;
+
+            if (curr->size == 0) {
+                if (prev == NULL)
+                    freeList = curr->next;
+                else
+                    prev->next = curr->next;
+                free(curr);
+            }
+            return start;
+        }
+        prev = curr;
+        curr = curr->next;
+    }
+    return -1;
+}
+
+void runTest(char* name, int (*allocFunc)(int)) {
+    int allocs[12];
+    int sizes[12];
+
+    printf("\n--- %s ---\n", name);
+    initMemory();
+
+    for (int i = 0; i < 12; i++) {
+        sizes[i] = (rand() % 10) + 3;
+        allocs[i] = allocFunc(sizes[i]);
+    }
+
+    for (int i = 0; i < 4; i++) {
+        int index = rand() % 12;
+        if (allocs[index] != -1) {
+            Block* b = (Block*)malloc(sizeof(Block));
+            b->start = allocs[index];
+            b->size = sizes[index];
+            b->next = freeList;
+            freeList = b;
+        }
+    }
+
+    printf("Free list before big allocation:\n");
+    printFreeList();
+
+    int big = allocFunc(25);
+    if (big == -1)
+        printf("Big allocation (25) FAIL\n");
+    else
+        printf("Big allocation (25) SUCCESS\n");
+
+    printf("Final free list:\n");
+    printFreeList();
+}
+
+int main() {
+    srand(1);
+
+    runTest("Best Fit", allocateBestFit);
+    runTest("Worst Fit", allocateWorstFit);
+    runTest("Next Fit", allocateNextFit);
+
+    return 0;
+}
