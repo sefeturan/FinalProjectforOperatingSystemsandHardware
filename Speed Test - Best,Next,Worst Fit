@@ -1,0 +1,60 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+
+typedef struct node {
+    int start;
+    int size;
+    struct node* next;
+} node;
+
+node* make_free_list() {
+    node* head = (node*)malloc(sizeof(node));
+    head->start = 0;
+    head->size = 100;
+    head->next = NULL;
+    return head;
+}
+
+void fake_allocate(node* head, int size) {
+    // this is simple fake allocate just walking list
+    node* temp = head;
+    while (temp != NULL) {
+        if (temp->size >= size) {
+            temp->size -= size;
+            break;
+        }
+        temp = temp->next;
+    }
+}
+
+void fake_free(node* head, int size) {
+    // fake free, doing nothing real, just for speed test
+    head->size += size;
+}
+
+void speed_test(char* name) {
+    node* free_list = make_free_list();
+    clock_t start, end;
+    start = clock();
+
+    for (int i = 0; i < 200; i++) {
+        int alloc_size = (rand() % 10) + 1;
+        fake_allocate(free_list, alloc_size);
+        fake_free(free_list, alloc_size);
+    }
+
+    end = clock();
+    double time_spent = (double)(end - start) / CLOCKS_PER_SEC;
+    printf("%s time: %f seconds\n", name, time_spent);
+}
+
+int main() {
+    srand(time(NULL));
+
+    speed_test("Best Fit");
+    speed_test("Worst Fit");
+    speed_test("Next Fit");
+
+    return 0;
+}
