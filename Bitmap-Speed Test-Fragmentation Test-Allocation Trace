@@ -1,0 +1,80 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+
+#define DISK_SIZE 32
+
+int bitmap[DISK_SIZE];
+
+void initDisk() {
+    for(int i = 0; i < DISK_SIZE; i++)
+        bitmap[i] = 0;
+}
+
+int bitmapAllocate(int size) {
+    for(int i = 0; i <= DISK_SIZE - size; i++) {
+        int ok = 1;
+        for(int j = 0; j < size; j++) {
+            if(bitmap[i + j] == 1) {
+                ok = 0;
+                break;
+            }
+        }
+        if(ok) {
+            for(int j = 0; j < size; j++)
+                bitmap[i + j] = 1;
+            return i;
+        }
+    }
+    return -1;
+}
+
+void bitmapFree(int start, int size) {
+    for(int i = 0; i < size; i++)
+        bitmap[start + i] = 0;
+}
+
+void printDisk() {
+    for(int i = 0; i < DISK_SIZE; i++)
+        printf("%d ", bitmap[i]);
+    printf("\n");
+}
+
+int main() {
+    clock_t start, end;
+    initDisk();
+
+    // SPEED TEST
+    start = clock();
+    for(int i = 0; i < 100; i++) {
+        int pos = bitmapAllocate(2);
+        if(pos != -1)
+            bitmapFree(pos, 2);
+    }
+    end = clock();
+    printf("Bitmap speed time: %lf\n", (double)(end-start));
+
+    // FRAGMENTATION TEST
+    int saved[20];
+    for(int i = 0; i < 20; i++)
+        saved[i] = bitmapAllocate(rand()%3 + 1);
+
+    for(int i = 0; i < 5; i++)
+        bitmapFree(saved[i], 1);
+
+    int big = bitmapAllocate(12);
+    if(big == -1)
+        printf("Bitmap big allocation failed\n");
+    else
+        printf("Bitmap big allocation success\n");
+
+    // ALLOCATION TRACE
+    initDisk();
+    int seq[] = {2,3,5,2,4,6,1,3,5,2,4,3,2,1,5};
+    for(int i = 0; i < 15; i++) {
+        bitmapAllocate(seq[i]);
+        printDisk();
+    }
+
+    return 0;
+}
