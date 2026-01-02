@@ -1,0 +1,144 @@
+#include <stdio.h>
+
+typedef struct Block {
+    int start;
+    int size;
+    struct Block* next;
+} Block;
+
+/* ---------- GLOBALS ---------- */
+Block *bestHead, *worstHead, *nextHead;
+Block *nextCursor = NULL;
+
+/* ---------- UTILS ---------- */
+Block* newBlock(int s, int sz) {
+    Block* b = (Block*)malloc(sizeof(Block));
+    b->start = s;
+    b->size = sz;
+    b->next = NULL;
+    return b;
+}
+
+void printList(char* name, Block* head) {
+    printf("%s Free List: ", name);
+    while (head != NULL) {
+        printf("[%d,%d] ", head->start, head->size);
+        head = head->next;
+    }
+    printf("\n");
+}
+
+void initMemory() {
+    bestHead = newBlock(0, 100);
+    worstHead = newBlock(0, 100);
+    nextHead = newBlock(0, 100);
+    nextCursor = nextHead;
+}
+
+/* ---------- BEST FIT ---------- */
+void allocBest(int req) {
+    Block *cur = bestHead, *prev = NULL;
+    Block *best = NULL, *bestPrev = NULL;
+
+    while (cur) {
+        if (cur->size >= req) {
+            if (!best || cur->size < best->size) {
+                best = cur;
+                bestPrev = prev;
+            }
+        }
+        prev = cur;
+        cur = cur->next;
+    }
+
+    if (!best) return;
+
+    best->start += req;
+    best->size -= req;
+    if (best->size == 0) {
+        if (bestPrev) bestPrev->next = best->next;
+        else bestHead = best->next;
+    }
+}
+
+/* ---------- WORST FIT ---------- */
+void allocWorst(int req) {
+    Block *cur = worstHead, *prev = NULL;
+    Block *worst = NULL, *worstPrev = NULL;
+
+    while (cur) {
+        if (cur->size >= req) {
+            if (!worst || cur->size > worst->size) {
+                worst = cur;
+                worstPrev = prev;
+            }
+        }
+        prev = cur;
+        cur = cur->next;
+    }
+
+    if (!worst) return;
+
+    worst->start += req;
+    worst->size -= req;
+    if (worst->size == 0) {
+        if (worstPrev) worstPrev->next = worst->next;
+        else worstHead = worst->next;
+    }
+}
+
+/* ---------- NEXT FIT ---------- */
+void allocNext(int req) {
+    Block *start = nextCursor;
+    Block *prev = NULL;
+
+    do {
+        if (nextCursor->size >= req) {
+            nextCursor->start += req;
+            nextCursor->size -= req;
+            if (nextCursor->size == 0) {
+                if (prev) prev->next = nextCursor->next;
+                else nextHead = nextCursor->next;
+            }
+            return;
+        }
+        prev = nextCursor;
+        nextCursor = nextCursor->next ? nextCursor->next : nextHead;
+    } while (nextCursor != start);
+}
+
+/* ---------- FREE ---------- */
+void freeBlock(Block** head, int start, int size) {
+    Block* n = newBlock(start, size);
+    n->next = *head;
+    *head = n;
+}
+
+/* ---------- MAIN (Q3C) ---------- */
+int main() {
+    int ops[] = {10, 5, 20, -5, 12, -10, 8, 6, 7, 3, 10};
+    int len = 11;
+
+    initMemory();
+
+    for (int i = 0; i < len; i++) {
+        int v = ops[i];
+
+        if (v > 0) {
+            allocBest(v);
+            allocWorst(v);
+            allocNext(v);
+        } else {
+            freeBlock(&bestHead, 0, -v);
+            freeBlock(&worstHead, 0, -v);
+            freeBlock(&nextHead, 0, -v);
+        }
+
+        printf("\nStep %d\n", i + 1);
+        printList("Best Fit", bestHead);
+        printList("Worst Fit", worstHead);
+        printList("Next Fit", nextHead);
+    }
+
+    return 0;
+}
