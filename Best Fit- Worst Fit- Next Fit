@@ -1,0 +1,164 @@
+#include <stdio.h>
+#include <stdlib.h>
+
+typedef struct Block {
+    int start;
+    int size;
+    struct Block* next;
+} Block;
+
+Block* freeList = NULL;
+Block* lastPos = NULL;
+
+/* create first free memory */
+void initMemory() {
+    freeList = (Block*)malloc(sizeof(Block));
+    freeList->start = 0;
+    freeList->size = 100;
+    freeList->next = NULL;
+    lastPos = freeList;
+}
+
+/* print free list */
+void printFreeList() {
+    Block* temp = freeList;
+    printf("Free List: ");
+    while (temp != NULL) {
+        printf("[%d,%d] ", temp->start, temp->size);
+        temp = temp->next;
+    }
+    printf("\n");
+}
+
+/* merge neighbor free blocks */
+void mergeBlocks() {
+    Block* cur = freeList;
+    while (cur != NULL && cur->next != NULL) {
+        if (cur->start + cur->size == cur->next->start) {
+            cur->size += cur->next->size;
+            Block* del = cur->next;
+            cur->next = del->next;
+            free(del);
+        } else {
+            cur = cur->next;
+        }
+    }
+}
+
+/* free memory */
+void freeMemory(int start, int size) {
+    Block* newBlock = (Block*)malloc(sizeof(Block));
+    newBlock->start = start;
+    newBlock->size = size;
+    newBlock->next = freeList;
+    freeList = newBlock;
+    mergeBlocks();
+}
+
+/* BEST FIT */
+int allocBestFit(int req) {
+    Block *cur = freeList, *best = NULL, *prev = NULL, *bestPrev = NULL;
+
+    while (cur != NULL) {
+        if (cur->size >= req) {
+            if (best == NULL || cur->size < best->size) {
+                best = cur;
+                bestPrev = prev;
+            }
+        }
+        prev = cur;
+        cur = cur->next;
+    }
+
+    if (best == NULL) return -1;
+
+    int addr = best->start;
+    best->start += req;
+    best->size -= req;
+
+    if (best->size == 0) {
+        if (bestPrev == NULL) freeList = best->next;
+        else bestPrev->next = best->next;
+        free(best);
+    }
+
+    return addr;
+}
+
+/* WORST FIT */
+int allocWorstFit(int req) {
+    Block *cur = freeList, *worst = NULL, *prev = NULL, *worstPrev = NULL;
+
+    while (cur != NULL) {
+        if (cur->size >= req) {
+            if (worst == NULL || cur->size > worst->size) {
+                worst = cur;
+                worstPrev = prev;
+            }
+        }
+        prev = cur;
+        cur = cur->next;
+    }
+
+    if (worst == NULL) return -1;
+
+    int addr = worst->start;
+    worst->start += req;
+    worst->size -= req;
+
+    if (worst->size == 0) {
+        if (worstPrev == NULL) freeList = worst->next;
+        else worstPrev->next = worst->next;
+        free(worst);
+    }
+
+    return addr;
+}
+
+/* NEXT FIT */
+int allocNextFit(int req) {
+    Block* cur = lastPos;
+    Block* prev = NULL;
+
+    while (cur != NULL) {
+        if (cur->size >= req) {
+            int addr = cur->start;
+            cur->start += req;
+            cur->size -= req;
+            lastPos = cur;
+
+            if (cur->size == 0) {
+                if (prev == NULL) freeList = cur->next;
+                else prev->next = cur->next;
+                free(cur);
+            }
+            return addr;
+        }
+        prev = cur;
+        cur = cur->next;
+    }
+    return -1;
+}
+
+/* main test */
+int main() {
+    initMemory();
+
+    printf("Initial state:\n");
+    printFreeList();
+
+    int a = allocBestFit(10);
+    int b = allocWorstFit(20);
+    int c = allocNextFit(15);
+
+    printf("After allocations:\n");
+    printFreeList();
+
+    freeMemory(a,10);
+    freeMemory(b,20);
+
+    printf("After free:\n");
+    printFreeList();
+
+    return 0;
+}
